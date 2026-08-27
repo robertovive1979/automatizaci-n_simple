@@ -38,16 +38,18 @@ def obtener_clima(driver, user_input):
     for patron in patrones:
         city = re.sub(rf"\b{patron}\b", " ", city)
 
-    # Eliminar únicamente las preposiciones "en" y "de" como palabras completas
+    # Eliminar "en" y "de" solamente cuando son palabras completas
     city = re.sub(r"\b(?:en|de)\b", " ", city)
 
     # Eliminar espacios repetidos
     city = re.sub(r"\s+", " ", city).strip()
 
+    # Verificar que se haya identificado una ciudad
     if not city:
         return "No se pudo identificar la ciudad."
 
     try:
+        # Consultar la temperatura actual en wttr.in
         response = requests.get(
             f"https://wttr.in/{city}",
             params={"format": "%t"},
