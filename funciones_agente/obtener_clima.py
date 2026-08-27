@@ -1,32 +1,64 @@
 # Módulo encargado de la integración con servicios meteorológicos externos
+import re
 import requests
+
 
 def obtener_clima(driver, user_input):
     """
     Obtiene la temperatura actual de una ciudad utilizando el servicio wttr.in.
-    
+
     Argumentos:
-        driver: Instancia de Selenium WebDriver (no se usa en esta implementación, pero se mantiene por compatibilidad).
-        user_input: El texto ingresado por el usuario o ya procesado.
-    
+        driver: Instancia de Selenium WebDriver (se mantiene por compatibilidad).
+        user_input: Texto ingresado por el usuario.
+
     Retorna:
-        Una cadena con la temperatura o un mensaje de error.
+        Una cadena con la temperatura actual o un mensaje de error.
     """
-    # Intentamos extraer el nombre de la ciudad eliminando palabras clave comunes
-    # Esto ayuda si se le pasa el input completo sin procesar previamente
-    city = user_input.lower().replace("clima", "").replace("temperatura", "").replace("en", "").replace("de", "").strip()
-    
+
+    # Convertir la entrada a minúsculas y eliminar signos de puntuación
+    city = user_input.lower().strip()
+    city = re.sub(r"[¿?¡!,.;:]", "", city)
+
+    # Eliminar expresiones relacionadas con la consulta del clima
+    patrones = [
+        r"cu[aá]l es",
+        r"cu[aá]nto hace",
+        r"dime",
+        r"quiero saber",
+        r"la temperatura actual",
+        r"temperatura actual",
+        r"la temperatura",
+        r"temperatura",
+        r"el clima",
+        r"clima",
+        r"el tiempo",
+        r"tiempo",
+    ]
+
+    for patron in patrones:
+        city = re.sub(rf"\b{patron}\b", " ", city)
+
+    # Eliminar únicamente las preposiciones "en" y "de" como palabras completas
+    city = re.sub(r"\b(?:en|de)\b", " ", city)
+
+    # Eliminar espacios repetidos
+    city = re.sub(r"\s+", " ", city).strip()
+
+    if not city:
+        return "No se pudo identificar la ciudad."
+
     try:
-        # Realizamos una petición GET al servicio wttr.in
-        # Usamos el parámetro format=%t para recibir únicamente la temperatura (ej. +25°C)
-        response = requests.get(f"https://wttr.in/{city}?format=%t", timeout=10)
-        
-        # Si la respuesta es exitosa (200), devolvemos el texto
+        response = requests.get(
+            f"https://wttr.in/{city}",
+            params={"format": "%t"},
+            timeout=10
+        )
+
         if response.status_code == 200:
-            return response.text.strip()
-        else:
-            return "No se pudo obtener el clima para esa ubicación (Código de error)."
-            
-    except Exception as e:
-        # Manejo de excepciones en caso de fallo en la conexión o timeout
+            temperatura = response.text.strip()
+            return temperatura
+
+        return "No se pudo obtener el clima para esa ubicación."
+
+    except requests.RequestException as e:
         return f"Error de red al obtener el clima: {e}"
